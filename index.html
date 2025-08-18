@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Peta & Data Stasiun Meteorologi Juni 2025</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .navbar { background: #2c3e50; padding: 10px; display: flex; }
+    .navbar a { color: white; margin-right: 20px; cursor: pointer; text-decoration: none; }
+    .navbar a.active { font-weight: bold; text-decoration: underline; }
+    .page { display: none; padding: 10px; }
+    .page.active { display: block; }
+    #map { height: 85vh; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <!-- Navigasi -->
+  <div class="navbar">
+    <a id="linkMap" class="active">🌍 Peta</a>
+    <a id="linkTmin">📊 Tabel Tmin</a>
+    <a id="linkTmax">📊 Tabel Tmax</a>
+  </div>
+
+  <!-- Halaman Peta -->
+  <div id="pageMap" class="page active">
+    <h3>Peta Cuaca Stasiun Meteorologi Bulan Juni 2025</h3>
+    <div class="controls">
+      <label><input type="checkbox" id="toggleHeavyRain" checked> Heavy Rain</label><br>
+      <label><input type="checkbox" id="toggleGale" checked> Gale</label>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <!-- Halaman Tabel -->
+  <div id="pageTmin" class="page">
+    <h3>Tabel 10 Temperatur Minimum</h3>
+    <table id="tminTable">
+      <thead>
+        <tr>
+          <th>ID Stasiun</th>
+          <th>Nama</th>
+          <th>Temperatur</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Halaman Tabel -->
+  <div id="pageTmax" class="page">
+    <h3>Tabel 10 Temperatur Maximum</h3>
+    <table id="tmaxTable">
+      <thead>
+        <tr>
+          <th>ID Stasiun</th>
+          <th>Nama</th>
+          <th>Temperatur</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Script -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script>
+    // --- Navigasi ---
+    const linkMap = document.getElementById("linkMap");
+    const linkTmin = document.getElementById("linkTmin");
+    const linkTmax = document.getElementById("linkTmax");
+
+    const pageMap = document.getElementById("pageMap");
+    const pageTmin = document.getElementById("pageTmin");
+    const pageTmax = document.getElementById("pageTmax");
+
+    function showPage(activeLink, activePage) {
+      [linkMap, linkTmin, linkTmax].forEach(link => link.classList.remove("active"));
+      [pageMap, pageTmin, pageTmax].forEach(page => page.classList.remove("active"));
+      activeLink.classList.add("active");
+      activePage.classList.add("active");
+    }
+
+    linkMap.addEventListener("click", () => showPage(linkMap, pageMap));
+    linkTmin.addEventListener("click", () => showPage(linkTmin, pageTmin));
+    linkTmax.addEventListener("click", () => showPage(linkTmax, pageTmax));
+
+    // --- PETA ---
+    const map = L.map('map').setView([-2.5, 118], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const heavyRainLayer = L.layerGroup().addTo(map);
+    const galeLayer = L.layerGroup().addTo(map);
+
+    document.getElementById('toggleHeavyRain').addEventListener('change', function () {
+      if (this.checked) {
+        map.addLayer(heavyRainLayer);
+      } else {
+        map.removeLayer(heavyRainLayer);
+      }
+    });
+
+    document.getElementById('toggleGale').addEventListener('change', function () {
+      if (this.checked) {
+        map.addLayer(galeLayer);
+      } else {
+        map.removeLayer(galeLayer);
+      }
+    });
+
+    const fileURL_map = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRhQJTfI8oZfANQEaxZR1qjaK7wrJKaxh2RcrmnTjkzVGqLzPCSAVcVmtRD0b-X0g/pub?output=csv';
+    
+    fetch(fileURL_map)
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true });
+        const data = parsed.data;
+
+        data.forEach(st => {
+          if (st.LAT && st.LON) {
+            const lat = parseFloat(st.LAT);
+            const lon = parseFloat(st.LON);
+
+            const popupContent = `
+              <b>${st.NAME}</b><br>
+              <b>${st.station_wmo_id}</b><br>
+              Curah Hujan: ${st.Curah_Hujan || '-'} mm<br>
+              Heavy Rain: ${st.Heavy_Rain || '-'}<br>
+              Gale: ${st.Gale || '-'}<br>
+              Temperatur: ${st.Temperatur || '-'} °C<br>
+              Kecepatan Angin: ${st.Kecepatan_angin || '-'} knot<br>
+              Arah Angin: ${st.Arah_angin || '-'} derajat<br>
+              Tekanan Permukaan: ${st.Tekanan_Permukaan || '-'} hPa<br>
+            `;
+
+            L.circleMarker([lat, lon], {
+              radius: 5,
+              color: 'gray',
+              fillColor: 'gray',
+              fillOpacity: 0.6
+            }).addTo(map).bindPopup(popupContent);
+            // Layer Heavy Rain
+            const hrValue = parseFloat(st.Heavy_Rain);
+            if (!isNaN(hrValue) && hrValue > 0) {
+                const rainIcon = L.divIcon({
+                    className: "custom-rain-icon",
+                    html: "🌧️",   // emoji awan hujan
+                    iconSize: [100, 100],
+                    iconAnchor: [15, 15],
+                    popupAnchor: [0, -15]
+                });
+
+                L.marker([lat, lon], { icon: rainIcon })
+                    .addTo(heavyRainLayer)
+                    .bindPopup(`<b>${st.NAME}</b><br>Heavy Rain: ${hrValue} mm`);
+            }
+
+            // Layer Gale
+            if (st.Gale && st.Gale.toLowerCase() === 'yes') {
+              L.circleMarker([lat, lon], {
+                radius: 8,
+                color: 'red',
+                fillColor: 'red',
+                fillOpacity: 0.8
+              }).addTo(galeLayer).bindPopup(`<b>${st.NAME}</b><br>Gale: Yes`);
+          }
+        }
+        });
+      });
+
+    // --- TABEL Tmin (sheet lain dari Google Sheet) ---
+    const fileURL_tmin = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQEs8pdoX921xUry-Hn2zRc48462ib4EQeINnrKQ6ZcsmFMI-CQbabfHlyJXV1BTw/pub?output=csv';
+    
+    fetch(fileURL_tmin)
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true });
+        const data = parsed.data;
+
+        // Isi tabel
+        const tbody = document.querySelector("#tminTable tbody");
+        data.forEach(row => {
+          if (row.station_wmo_id && row.NAME && row.Temperatur) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${row.station_wmo_id}</td>
+              <td>${row.NAME}</td>
+              <td>${row.Temperatur}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        });
+      });
+
+    // --- TABEL Tmin (sheet lain dari Google Sheet) ---
+    const fileURL_tmax = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRR7RgoPAqA2usXcZLZDOpXBfNpdEtGvF_6fsd-2obe_lGnCULQzsnrIkKnD005VA/pub?output=csv';
+    
+    fetch(fileURL_tmax)
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true });
+        const data = parsed.data;
+
+        // Isi tabel
+        const tbody = document.querySelector("#tmaxTable tbody");
+        data.forEach(row => {
+          if (row.station_wmo_id && row.NAME && row.Temperatur) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${row.station_wmo_id}</td>
+              <td>${row.NAME}</td>
+              <td>${row.Temperatur}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        });
+      });
+  </script>
+</body>
+</html>
