@@ -186,12 +186,12 @@
         // Isi tabel
         const tbody = document.querySelector("#tminTable tbody");
         data.forEach(row => {
-          if (row.station_wmo_id && row.NAME && row.Temperatur) {
+          if (row.station_wmo_id && row.NAME && row.Tmin) {
             const tr = document.createElement("tr");
             tr.innerHTML = `
               <td>${row.station_wmo_id}</td>
               <td>${row.NAME}</td>
-              <td>${row.Temperatur}</td>
+              <td>${row.Tmin}</td>
             `;
             tbody.appendChild(tr);
           }
@@ -210,12 +210,12 @@
         // Isi tabel
         const tbody = document.querySelector("#tmaxTable tbody");
         data.forEach(row => {
-          if (row.station_wmo_id && row.NAME && row.Temperatur) {
+          if (row.station_wmo_id && row.NAME && row.Tmax) {
             const tr = document.createElement("tr");
             tr.innerHTML = `
               <td>${row.station_wmo_id}</td>
               <td>${row.NAME}</td>
-              <td>${row.Temperatur}</td>
+              <td>${row.Tmax}</td>
             `;
             tbody.appendChild(tr);
           }
