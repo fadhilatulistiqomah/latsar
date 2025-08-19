@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Peta & Data Stasiun Meteorologi Juni 2025</title>
+  <title></title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
@@ -27,7 +27,7 @@
 
   <!-- Halaman Peta -->
   <div id="pageMap" class="page active">
-    <h3>Peta Cuaca Stasiun Meteorologi Bulan Juni 2025</h3>
+    <h3></h3>
     <div class="controls">
       <label><input type="checkbox" id="toggleHeavyRain" checked> Heavy Rain</label><br>
       <label><input type="checkbox" id="toggleGale" checked> Gale</label>
@@ -37,7 +37,7 @@
 
   <!-- Halaman Tabel -->
   <div id="pageTmin" class="page">
-    <h3>Tabel 10 Temperatur Minimum</h3>
+    <h3></h3>
     <table id="tminTable">
       <thead>
         <tr>
@@ -52,7 +52,7 @@
 
   <!-- Halaman Tabel -->
   <div id="pageTmax" class="page">
-    <h3>Tabel 10 Temperatur Maximum</h3>
+    <h3></h3>
     <table id="tmaxTable">
       <thead>
         <tr>
@@ -73,10 +73,13 @@
     const linkMap = document.getElementById("linkMap");
     const linkTmin = document.getElementById("linkTmin");
     const linkTmax = document.getElementById("linkTmax");
+    const today = new Date()
 
     const pageMap = document.getElementById("pageMap");
     const pageTmin = document.getElementById("pageTmin");
     const pageTmax = document.getElementById("pageTmax");
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formatted = today.toLocaleDateString('id-ID', options);
 
     function showPage(activeLink, activePage) {
       [linkMap, linkTmin, linkTmax].forEach(link => link.classList.remove("active"));
@@ -97,6 +100,17 @@
 
     const heavyRainLayer = L.layerGroup().addTo(map);
     const galeLayer = L.layerGroup().addTo(map);
+
+    document.title = `Peta & Data Stasiun Meteorologi ${formatted}`;
+
+    // Ganti H3 Peta
+    document.querySelector("#pageMap h3").textContent = `Peta Cuaca Stasiun Meteorologi ${formatted}`;
+
+    // Ganti H3 Tabel Tmin
+    document.querySelector("#pageTmin h3").textContent = `Tabel 10 Temperatur Minimum (${formatted})`;
+
+    // Ganti H3 Tabel Tmax
+    document.querySelector("#pageTmax h3").textContent = `Tabel 10 Temperatur Maximum (${formatted})`;
 
     document.getElementById('toggleHeavyRain').addEventListener('change', function () {
       if (this.checked) {
@@ -162,13 +176,19 @@
             }
 
             // Layer Gale
-            if (st.Gale && st.Gale.toLowerCase() === 'yes') {
-              L.circleMarker([lat, lon], {
-                radius: 8,
-                color: 'red',
-                fillColor: 'red',
-                fillOpacity: 0.8
-              }).addTo(galeLayer).bindPopup(`<b>${st.NAME}</b><br>Gale: Yes`);
+            const glValue = parseFloat(st.Gale);
+            if (!isNaN(glValue) && glValue > 0) {
+                const galeIcon = L.divIcon({
+                    className: "custom-wind-icon",
+                    html: "<div style='font-size:30px;'>💨</div>",
+                    iconSize: [200, 200],
+                    iconAnchor: [15, 15],
+                    popupAnchor: [0, -15]
+                });
+
+                L.marker([lat, lon], { icon: galeIcon })
+                    .addTo(galeLayer)
+                    .bindPopup(`<b>${st.NAME}</b><br>Gale: ${glValue} knot`);
           }
         }
         });
