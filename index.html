@@ -5,25 +5,61 @@
   <title></title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    .navbar { background: #2c3e50; padding: 10px; display: flex; }
-    .navbar a { color: white; margin-right: 20px; cursor: pointer; text-decoration: none; }
-    .navbar a.active { font-weight: bold; text-decoration: underline; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; padding-top : 20px}
+    .navbar { 
+      position : fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 98%;
+      background: #2c3e50; 
+      padding: 10px 20px; 
+      display: flex; 
+      flex-wrap: wrap;
+      justify-content: space-between; 
+      align-items: center;
+      color: white;
+      z-index: 1000;             /* pastikan muncul di atas elemen lain */
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* opsional: beri bayangan */
+    }
+    .navbar .links a { 
+      color: white; 
+      margin-right: 20px; 
+      cursor: pointer; 
+      text-decoration: none; 
+    }
+    .navbar .links a.active { font-weight: bold; text-decoration: underline; }
     .page { display: none; padding: 10px; }
     .page.active { display: block; }
     #map { height: 85vh; }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background: #f2f2f2; }
+    #tanggal {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      font-weight: bold;
+      color: white;
+    }
   </style>
 </head>
 <body>
   <!-- Navigasi -->
   <div class="navbar">
-    <a id="linkMap" class="active">🌍 Peta</a>
-    <a id="linkTmin">📊 Tabel Tmin</a>
-    <a id="linkTmax">📊 Tabel Tmax</a>
+  <!-- Kiri: Menu Navigasi -->
+    <div class="links">
+      <a id="linkMap" class="active">🌍 Peta</a>
+      <a id="linkData">📊 Tabel</a>
+      <a id="linkSource">📊 Stasiun</a>
+    </div>
+    <!-- Kanan: Tanggal -->
+    <div id="tanggal" style="font-weight:bold; color:white">
+    <!-- nanti isi lewat JS -->
+    </div>
   </div>
+
 
   <!-- Halaman Peta -->
   <div id="pageMap" class="page active">
@@ -35,35 +71,68 @@
     <div id="map"></div>
   </div>
 
-  <!-- Halaman Tabel -->
-  <div id="pageTmin" class="page">
+  <!-- Halaman Data -->
+  <div id="pageData" class="page">
     <h3></h3>
-    <table id="tminTable">
+
+    <h4>Tabel Temperatur Minimum</h4>
+    <table class="dataTable" id="tminTable">
       <thead>
         <tr>
           <th>ID Stasiun</th>
           <th>Nama</th>
-          <th>Temperatur</th>
+          <th>Temperatur Min</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h4>Tabel Temperatur Maksimum</h4>
+    <table class="dataTable" id="tmaxTable">
+      <thead>
+        <tr>
+          <th>ID Stasiun</th>
+          <th>Nama</th>
+          <th>Temperatur Max</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h4>Tabel Curah Hujan</h4>
+    <table class="dataTable" id="rainTable">
+      <thead>
+        <tr>
+          <th>ID Stasiun</th>
+          <th>Nama</th>
+          <th>Curah Hujan (mm)</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
 
-  <!-- Halaman Tabel -->
-  <div id="pageTmax" class="page">
+  <!-- Halaman Source -->
+  <div id="pageSource" class="page">
     <h3></h3>
-    <table id="tmaxTable">
+    <table class="dataTable" id="staTable">
       <thead>
         <tr>
+          <th>No</th>
           <th>ID Stasiun</th>
           <th>Nama</th>
-          <th>Temperatur</th>
+          <th>Lat</th>
+          <th>Lon</th>
+          <th>Height</th>
+          <th>Region</th>
+          <th>Provinsi</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
+  
+
 
   <!-- Script -->
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -71,47 +140,51 @@
   <script>
     // --- Navigasi ---
     const linkMap = document.getElementById("linkMap");
-    const linkTmin = document.getElementById("linkTmin");
-    const linkTmax = document.getElementById("linkTmax");
+    const linkData = document.getElementById("linkData");
+    const linkSource = document.getElementById("linkSource");
     const today = new Date()
 
     const pageMap = document.getElementById("pageMap");
-    const pageTmin = document.getElementById("pageTmin");
-    const pageTmax = document.getElementById("pageTmax");
+    const pageData = document.getElementById("pageData");
+    const pageSource = document.getElementById("pageSource");
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formatted = today.toLocaleDateString('id-ID', options);
-
+    
     function showPage(activeLink, activePage) {
-      [linkMap, linkTmin, linkTmax].forEach(link => link.classList.remove("active"));
-      [pageMap, pageTmin, pageTmax].forEach(page => page.classList.remove("active"));
+      [linkMap, linkData, linkSource].forEach(link => link.classList.remove("active"));
+      [pageMap, pageData, pageSource].forEach(page => page.classList.remove("active"));
       activeLink.classList.add("active");
       activePage.classList.add("active");
     }
 
     linkMap.addEventListener("click", () => showPage(linkMap, pageMap));
-    linkTmin.addEventListener("click", () => showPage(linkTmin, pageTmin));
-    linkTmax.addEventListener("click", () => showPage(linkTmax, pageTmax));
+    linkData.addEventListener("click", () => showPage(linkData, pageData));
+    linkSource.addEventListener("click", () => showPage(linkSource, pageSource));
+
+    
 
     // --- PETA ---
     const map = L.map('map').setView([-2.5, 118], 5);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
+      }
+    ).addTo(map);
+
+
+    
 
     const heavyRainLayer = L.layerGroup().addTo(map);
     const galeLayer = L.layerGroup().addTo(map);
 
     document.title = `Peta & Data Stasiun Meteorologi ${formatted}`;
-
-    // Ganti H3 Peta
-    document.querySelector("#pageMap h3").textContent = `Peta Cuaca Stasiun Meteorologi ${formatted}`;
-
-    // Ganti H3 Tabel Tmin
-    document.querySelector("#pageTmin h3").textContent = `Tabel 10 Temperatur Minimum (${formatted})`;
-
-    // Ganti H3 Tabel Tmax
-    document.querySelector("#pageTmax h3").textContent = `Tabel 10 Temperatur Maximum (${formatted})`;
-
+    document.querySelector("#pageMap h3").textContent = `Peta Cuaca Stasiun Meteorologi`;
+    document.querySelector("#pageData h3").textContent = `Tabel Kondisi Cuaca Selama 24 jam`;
+    document.querySelector("#pageSource h3").textContent = `Tabel Stasiun`;
+    document.getElementById('tanggal').textContent = formatted;
     document.getElementById('toggleHeavyRain').addEventListener('change', function () {
       if (this.checked) {
         map.addLayer(heavyRainLayer);
@@ -145,8 +218,6 @@
               <b>${st.NAME}</b><br>
               <b>${st.station_wmo_id}</b><br>
               Curah Hujan: ${st.Curah_Hujan || '-'} mm<br>
-              Heavy Rain: ${st.Heavy_Rain || '-'}<br>
-              Gale: ${st.Gale || '-'}<br>
               Temperatur: ${st.Temperatur || '-'} °C<br>
               Kecepatan Angin: ${st.Kecepatan_angin || '-'} knot<br>
               Arah Angin: ${st.Arah_angin || '-'} derajat<br>
@@ -154,20 +225,20 @@
             `;
 
             L.circleMarker([lat, lon], {
-              radius: 5,
-              color: 'gray',
-              fillColor: 'gray',
+              radius: 3,
+              color: 'red',
+              fillColor: 'red',
               fillOpacity: 0.6
             }).addTo(map).bindPopup(popupContent);
-            // Layer Heavy Rain
+            
+           // Layer Heavy Rain
             const hrValue = parseFloat(st.Heavy_Rain);
             if (!isNaN(hrValue) && hrValue > 0) {
-                const rainIcon = L.divIcon({
-                    className: "custom-rain-icon",
-                    html: "<div style='font-size:20px;'>🌧️</div>",
-                    iconSize: [100, 100],
-                    iconAnchor: [15, 15],
-                    popupAnchor: [0, -15]
+                const rainIcon = L.icon({
+                    iconUrl: 'cloud_rain.png',   // path ke file gambar
+                    iconSize: [40, 40],          // ukuran ikon
+                    iconAnchor: [20, 20],        // titik jangkar (tengah ikon)
+                    popupAnchor: [0, -20]        // posisi popup relatif ke ikon
                 });
 
                 L.marker([lat, lon], { icon: rainIcon })
@@ -178,19 +249,19 @@
             // Layer Gale
             const glValue = parseFloat(st.Gale);
             if (!isNaN(glValue) && glValue > 0) {
-                const galeIcon = L.divIcon({
-                    className: "custom-wind-icon",
+                const galeIcon = L.icon({
+                    iconUrl: "wind.png",
                     html: "<div style='font-size:30px;'>💨</div>",
-                    iconSize: [200, 200],
-                    iconAnchor: [15, 15],
-                    popupAnchor: [0, -15]
+                    iconSize: [30, 30],
+                    iconAnchor: [20, 20],
+                    popupAnchor: [0, -20]
                 });
 
                 L.marker([lat, lon], { icon: galeIcon })
                     .addTo(galeLayer)
                     .bindPopup(`<b>${st.NAME}</b><br>Gale: ${glValue} knot`);
+            }
           }
-        }
         });
       });
 
@@ -218,7 +289,7 @@
         });
       });
 
-    // --- TABEL Tmin (sheet lain dari Google Sheet) ---
+    // --- TABEL Tmax (sheet lain dari Google Sheet) ---
     const fileURL_tmax = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRR7RgoPAqA2usXcZLZDOpXBfNpdEtGvF_6fsd-2obe_lGnCULQzsnrIkKnD005VA/pub?output=csv';
     
     fetch(fileURL_tmax)
@@ -241,6 +312,65 @@
           }
         });
       });
+
+      // --- TABEL Curah Hujan (sheet lain dari Google Sheet) ---
+    const fileURL_ch = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTb5JI1Q4mjyjSGg91cOJnPYpOrbrCOzEQ8GgG3Kpe_UHv8Lf4MLWCN5nZyJP82Xw/pub?output=csv';
+    
+    fetch(fileURL_ch)
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true });
+        const data = parsed.data;
+
+        // Isi tabel
+        const tbody = document.querySelector("#rainTable tbody");
+        data.forEach(row => {
+          if (row.station_wmo_id && row.NAME && row.Curah_Hujan) {
+            const tr = document.createElement("tr");
+             // Konversi nilai CH ke angka
+            const chValue = parseFloat(row.Curah_Hujan);
+
+              // Cek apakah lebih dari 50
+            const chStyle = chValue > 50 ? 'style="background-color: red; color: white;"' : '';
+            tr.innerHTML = `
+              <td>${row.station_wmo_id}</td>
+              <td>${row.NAME}</td>
+              <td ${chStyle}>${row.Curah_Hujan}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        });
+      });
+
+        // --- TABEL Stasiun (sheet lain dari Google Sheet) ---
+    const fileURL_sta = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRO3eZOUf_wVdqQItLsFtDUjaM7uM9U9hwtQLPn7VXh_RB7Bn8PLG6WyeywPZNu7w/pub?output=csv';
+    
+    fetch(fileURL_sta)
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true });
+        const data = parsed.data;
+
+        // Isi tabel
+        const tbody = document.querySelector("#staTable tbody");
+        data.forEach(row => {
+          if (row.No && row.station_wmo_id && row.NAME && row.LAT && row.LON && row.HEIGHT && row.REGION_DESC && row.PROPINSI_NAME) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${row.No}</td>
+              <td>${row.station_wmo_id}</td>
+              <td>${row.NAME}</td>
+              <td>${row.LAT}</td>
+              <td>${row.LON}</td>
+              <td>${row.HEIGHT}</td>
+              <td>${row.REGION_DESC}</td>
+              <td>${row.PROPINSI_NAME}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        });
+      });
+
   </script>
 </body>
 </html>
